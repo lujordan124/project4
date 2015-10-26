@@ -14,6 +14,7 @@ using namespace std;
 
 pthread_mutex_t barrier_mutex;
 int barrierCount = 0;
+int barrierBool = 0;
 vector<int> data;
 
 struct mergeData {
@@ -29,13 +30,16 @@ struct sorter {
 } comparator;
 
 void barrier_signal() {
-  
+  	barrierBool = 1;
 }
 
 void barrier_wait() {
 	pthread_mutex_lock(&barrier_mutex);
 	barrierCount--;
 	pthread_mutex_unlock(&barrier_mutex);
+	if (barrierCount == 0) {
+		barrier_signal();
+	}
 }
 
 void *sortLocal(void* args) {  
@@ -72,7 +76,7 @@ void parseLine(char *line) {
 	int j;
 	for (i = 0; i < numCycles; i++) {
 		threadsMade = 0;
-		while (barrierCount > 0) {
+		while (barrierBool == 0) {
 		    if (threadsMade == 0) {
 		      for (j = 0; j < numGroups; j++) {
 			      struct mergeData *params = new mergeData;
@@ -85,6 +89,11 @@ void parseLine(char *line) {
 		      threadsMade = 1;
 		    }
 		}
+
+		barrierBool = 0;
+
+		//SIGNAL BARRIER
+		// barrier_signal(c);
 		
 		if (i < numCycles - 1) {
 			pow2++;
@@ -94,7 +103,13 @@ void parseLine(char *line) {
 		}
 	}
 
-	cout << data[0] << data[1] << data[2] << data[3] << data[4] << data[5] << data[6] << data[7] << endl;
+	for (i = 0; i < NUM_THREADS; i++) {
+		pthread_join(threads[i], NULL);
+	}
+
+	for (i = 0; i < count; i++) {
+		cout << data[i] << " ";
+	}
 }
 
 int main() {
